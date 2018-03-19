@@ -1,13 +1,14 @@
 # FRB candidate viewer
 
-This code can be used for plotting FRB candidates. This is fredda verison.
+This code can be used for plotting FRB candidates. This is the fredda verison.
+The given example reads fof'ed version, but the cfg file can be modified to use the fredda.cand file.
 
 ### Prerequisites
 
 ```
 pandas
 bokeh 0.12.6
-sigpyproc
+sigpyproc (https://github.com/ewanbarr/sigpyproc)
 mbplotlib
 ```
 
