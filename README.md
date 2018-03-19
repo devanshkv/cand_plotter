@@ -1,6 +1,6 @@
 # FRB candidate viewer
 
-This code can be used for plotting FRB candidates. Currently it supports candidates from Heimdall and can be easily modified to work with other search pipelines such as Fredda.
+This code can be used for plotting FRB candidates. This is fredda verison.
 
 ### Prerequisites
 

@@ -1,6 +1,6 @@
+#!/usr/bin/env python
 import ConfigParser
 import os, glob
-
 import pandas as pd
 
 from bokeh.plotting import figure
@@ -29,18 +29,18 @@ CAND_TOP_DIR = config.get('cand', 'topdir')
 
 obs_moniker = config.get('cand_structure', 'observation_moniker')
 obs_pattern = config.get('cand_structure', 'observation_pattern')
-
 candidate_prefix = config.get('cand_structure', 'candidate_prefix')
 candidate_postfix = config.get('cand_structure', 'candidate_postfix')
 obs_pattern = config.get('cand_structure', 'observation_pattern')
 
 obs_ids = []
-cand_files = glob.glob(CAND_TOP_DIR + "/" + obs_pattern + "/" + candidate_prefix + '*' + candidate_postfix)
+cand_files = glob.glob(CAND_TOP_DIR +  "/2*/" + candidate_prefix + '*' + candidate_postfix)
 print "Found",len(cand_files),"candidates"
-print "tried",CAND_TOP_DIR + "/" + obs_pattern + "/" + candidate_prefix + '*' + candidate_postfix
+print "tried",CAND_TOP_DIR + "/2*/" + candidate_prefix + '*' + candidate_postfix
+
 for cand_file_p in cand_files:
   cand_info = cand_file_p.split("/")
-  obs_ids.append(cand_info[4])
+  obs_ids.append(cand_info[7])
 
 
 print TOP_DIR+"/"+obs_pattern
@@ -88,13 +88,13 @@ cands = pd.DataFrame()
 candidate_prefix = config.get('cand_structure', 'candidate_prefix')
 candidate_postfix = config.get('cand_structure', 'candidate_postfix')
 def update_cand_file():
-  cand_file = CAND_TOP_DIR + obs_selector.value + "/" # + subobs_selector.value + "." + subsubobs_selector.value + candidate_postfix
+  cand_file = CAND_TOP_DIR + "/" + obs_selector.value + "/" # + subobs_selector.value + "." + subsubobs_selector.value + candidate_postfix
   if subobservations_present:
     cand_file += subobs_selector.value + "/"
     if subsubobservations_present:
       cand_file += subsubobs_selector.value + "/"
   cand_file += candidate_prefix + "*" + candidate_postfix
-  #print cand_file
+  print cand_file
   cand_files = glob.glob(cand_file)#[0]
   if len(cand_files)  < 1 :
     print "Candidate file doesn't exit"
@@ -103,11 +103,12 @@ def update_cand_file():
   cand_file = cand_files[0]
   print cand_file
   print "loading cands", cand_file
-  _cands = pd.read_csv(cand_file, header=None, comment='#',
-      delim_whitespace=True,
-      names=config.get('cand', 'format').split(',') )
+  _cands = pd.read_csv(cand_file, comment='#', delim_whitespace=True, names=config.get('cand', 'format').split(',')) #, #names=config.get('cand', 'format').split(",") )
+  _cands["max_snr"] =_cands["snr"]
+  print _cands.keys()
   _cands["color"] = pd.Series("blue", _cands.index)
   # set the range of threshold sliders:
+  print _cands.columns
   cand_min_snr.start=_cands["snr"].min()
   cand_min_snr.end=_cands["snr"].max()
   cand_min_width.start=_cands["logwidth"].min()
@@ -118,9 +119,6 @@ def update_cand_file():
   cand_min_DM.end=_cands["DM"].max()
   cand_max_DM.start=_cands["DM"].min()
   cand_max_DM.end=_cands["DM"].max()
-  if (cand_max_beam.value == cand_max_beam.end):
-    cand_max_beam.value = _cands["beam"].max()
-  cand_max_beam.end=_cands["beam"].max()
   for column in _cands.columns.values:
     cands[column] = _cands[column]
   update()
@@ -145,24 +143,23 @@ axis_map = {
 inverse_axis_map = {v: k for k, v in axis_map.iteritems()}
 
 cand_x_axis = Select(title="X Axis", options=sorted(axis_map.keys()),
-  value="Beam No.")
+    value="Beam No.")
 cand_y_axis = Select(title="Y Axis", options=sorted(axis_map.keys()),
-  value="Time (s)")
+    value="Time (s)")
 
-cand_min_snr = Slider(title="Min S/N", value = 7.0, start=6.0, end=15.0, step=0.5)
+cand_min_snr = Slider(title="Min S/N", value = 7.0, start=7.0, end=15.0, step=0.05)
 cand_min_width = Slider(title="Min log2(width)", value = 0, start=0, end=10, step=1)
-cand_max_width = Slider(title="Max log2(width)", value = 9, start=0, end=10, step=1)
-cand_min_DM = Slider(title="Min DM", value = 20., start=0., end=4116., step=1)
-cand_max_DM = Slider(title="Max DM", value = 4116., start=0., end=4116., step=1)
-cand_min_beam = Slider(title="Min beam no.", value = 0, start=0., end=352, step=1)
-cand_max_beam = Slider(title="Max beam no.", value = 352, start=0., end=352, step=1)
+cand_max_width = Slider(title="Max log2(width)", value = 32, start=0, end=32, step=1)
+cand_min_DM = Slider(title="Min DM", value = 20., start=0., end=41160., step=1)
+cand_max_DM = Slider(title="Max DM", value = 41160., start=0., end=41160., step=1)
+cand_min_beam = Slider(title="Min beam no.", value = 0, start=0., end=36, step=1)
+cand_max_beam = Slider(title="Max beam no.", value = 36, start=0., end=36, step=1)
 
 # Create Column Data Source that will be used by the plot
-source = ColumnDataSource(data=dict(x=[0,], y=[0,], DM=[0,], snr=[0,], filter_width=[0,],
-  sample=[0,], beam=[0,], color=[0,], alpha=[0,], time = [0,]))
+source = ColumnDataSource(data=dict(x=[], y=[], DM=[], snr=[], filter_width=[],
+  sample=[], beam=[], color=[], alpha=[], time = []))
 
-source_ts = ColumnDataSource(data=dict(time=np.arange(0, 200), series=np.zeros(200)))
-source_ts_0DM = ColumnDataSource(data=dict(time=np.arange(0, 200), series=np.zeros(200)))
+source_ts = ColumnDataSource(data=dict(time=[], series=[]))
 source_fb = ColumnDataSource(data=dict(image=[]))
 source_fb_conv = ColumnDataSource(data=dict(image=[]))
 
@@ -180,15 +177,10 @@ columns = [
 candidate_table = DataTable(source=source_for_table, columns=columns, width=800)
 table = widgetbox(candidate_table)
 
-TOOLS = 'crosshair, box_zoom, reset, box_select, tap'
-TOOLS_INC_H = 'crosshair, box_zoom, reset, box_select, tap, hover'
+TOOLS = 'crosshair, box_zoom, reset, box_select, tap, hover'
 
-#hover = HoverTool(tooltips=[("S/N", "@snr"), ("DM", "@DM"), ("time", "@time"), ("sample", "@sample")])
-
-cands_fig = figure(plot_height=480, plot_width=640, title="", tools = TOOLS_INC_H,#, hover],
+cands_fig = figure(plot_height=600, plot_width=700, title="", tools = TOOLS,
     toolbar_location='right', output_backend = "webgl", lod_threshold = 100 )
-cands_fig.xaxis.axis_label = cand_x_axis.value
-cands_fig.yaxis.axis_label = cand_y_axis.value
 cands_plot = cands_fig.circle(x="x", y="y", source=source, size=15,
     color="color", line_color=None, fill_alpha="alpha")
 cands_fig.text(x="x", y="y", text="beam", source=source, text_font_size='8pt',
@@ -197,32 +189,23 @@ cands_fig.text(x="x", y="y", text="beam", source=source, text_font_size='8pt',
 hover = cands_fig.select(dict(type=HoverTool))
 hover.tooltips = [("S/N", "@snr"), ("DM", "@DM"), ("time", "@time"), ("sample", "@sample")]
 
-timeseries_fig = figure(plot_height=300, plot_width=800, title="Time Series",
+timeseries_fig = figure(plot_height=300, plot_width=1400, title="Time Series",
     tools = 'box_zoom, reset', toolbar_location='right')
-timeseries_fig.xaxis.axis_label = "Time [ms]"
-timeseries_fig.yaxis.axis_label = "Power (arbitrary)"
-timeseries_plot = timeseries_fig.line(x="time", y="series", source=source_ts, line_width=2, legend="Dedispersed")
-timeseries_plot_0DM = timeseries_fig.line(x="time", y="series", source=source_ts_0DM, line_width=1, line_color="firebrick", legend="0 DM")
+timeseries_plot = timeseries_fig.line(x="time", y="series", source=source_ts, line_width=2)
 
-dedisp_fig = figure(plot_height=480, plot_width=400, title="Dedispersed data",
+dedisp_fig = figure(plot_height=600, plot_width=700, title="Dedispersed data",
     tools ='box_zoom, reset', x_range=(0, 10), y_range=(0, 10),
     toolbar_location='right' )
-dedisp_fig.xaxis.axis_label = "Time [arbitrary]"
-dedisp_fig.yaxis.axis_label = "Frequency [arbitrary]"
 dedisp_plot = dedisp_fig.image(image="image", x=0, y=0, dw=10, dh=10, source=source_fb, palette = 'Viridis256' )
 
-conv_fig = figure(plot_height=480, plot_width=400, title="Convolved data",
+conv_fig = figure(plot_height=600, plot_width=700, title="Convolved data",
     tools ='box_zoom, reset', x_range=(0, 10), y_range=(0, 10),
     toolbar_location='right')
-conv_fig.xaxis.axis_label = "Time [arbitrary]"
-conv_fig.yaxis.axis_label = "Frequency [arbitrary]"
 conv_plot = conv_fig.image(image="image", x=0, y=0, dw=10, dh=10,
     source=source_fb_conv, palette = 'Viridis256')
 
 def select_cands():
-  print "select_cands entered"
   selected = cands[
-      (cands.primary_beam > 1) &
       (cands.snr >= cand_min_snr.value) &
       (cands.logwidth >= cand_min_width.value) &
       (cands.logwidth <= cand_max_width.value) &
@@ -240,7 +223,7 @@ def update():
 
   cands_fig.xaxis.axis_label = cand_x_axis.value
   cands_fig.yaxis.axis_label = cand_y_axis.value
-  cands_fig.title.text = "%d candidates selected" % len(df)
+  cands_fig.title.text = "%d candidates present" % len(df)
   source.data = dict(
     x=df[x_name],
     y=df[y_name],
@@ -269,12 +252,10 @@ def tap_callback(attr, old, new):
     beam = selected_cand["beam"].tolist()[0]
     snr = selected_cand["snr"].tolist()[0]
     max_snr = selected_cand["max_snr"].tolist()[0]
-    _, _dedisp_block, _conv_block, _time, _series, _series_0DM = get_fbank_data_time(dm,
+    _, _dedisp_block, _conv_block, _time, _series = get_fbank_data_time(dm,
         time, 2**filter_ind, beam)
     source_ts.data["time"] = _time
     source_ts.data["series"] = _series
-    source_ts_0DM.data["time"] = _time
-    source_ts_0DM.data["series"] = _series_0DM
     source_fb.data["image"] = [_dedisp_block]
     source_fb_conv.data["image"] = [_conv_block]
 
@@ -319,8 +300,6 @@ def tap_callback_table(attr, old, new):
         time, 2**filter_ind, beam)
     source_ts.data["time"] = _time
     source_ts.data["series"] = _series
-    source_ts_0DM.data["time"] = _time
-    source_ts_0DM.data["series"] = _series_0DM
     source_fb.data["image"] = [_dedisp_block]
     source_fb_conv.data["image"] = [_conv_block]
 
@@ -355,8 +334,7 @@ filterbank_prefix = config.get('cand_structure', 'filterbank_prefix')
 
 def get_fbank_data(dm, sample, width, beam):
   # based on Wael's filplot
-  fil_pattern = (TOP_DIR+"/" + obs_selector.value+"/" + subobs_selector.value
-      + "/" + subsubobs_selector.value + filterbank_prefix + "%03d/" % beam +"2*.fil")
+  fil_pattern=(TOP_DIR+"/" + obs_selector.value+ filterbank_prefix + "/ics_beams"+"/%02d"%beam +".fil")
   fil_fn = glob.glob(fil_pattern)
   if len(fil_fn) > 0:
     print fil_fn
@@ -375,6 +353,7 @@ def get_fbank_data(dm, sample, width, beam):
     t_extract = 2*backstep + 2*width + t_smear
 
     if (sample-backstep+t_extract) > fil.header.nsamples:
+        #raise RuntimeError("Filterbank out-of-bound", "End window is out of bounds")
         print "Filterbank out-of-bound.", "End window is out of bounds", backstep, event_end
         backstep = int((fil.header.nsamples - sample)/tsamp_ms)
         event_end = int(backstep*2 + width)
@@ -395,9 +374,8 @@ def get_fbank_data(dm, sample, width, beam):
 
     time  = np.arange(event_end)*tsamp_ms
     series = disp_block.sum(axis=0)[:event_end]
-    series_0DM = block.sum(axis=0)[:event_end]
 
-    return block, disp_block[:,:event_end], conv_arr, time, series, series_0DM
+    return block, disp_block[:,:event_end], conv_arr, time, series
   else:
     print "No filterbank found"
     print fil_pattern
@@ -405,8 +383,7 @@ def get_fbank_data(dm, sample, width, beam):
 def get_fbank_data_time(dm, _time, width, beam):
   print "get_fbank_data_time: running"
   # based on Wael's filplot
-  fil_pattern = (TOP_DIR+"/" + obs_selector.value+"/" + subobs_selector.value
-      + "/" + subsubobs_selector.value + filterbank_prefix + "%03d/" % beam +"2*.fil")
+  fil_pattern=(TOP_DIR+"/" + obs_selector.value+ filterbank_prefix + "/ics_beams"+"/%02d"%beam +".fil")
   fil_fn = glob.glob(fil_pattern)
   if len(fil_fn) > 0:
     print fil_fn[0]
@@ -427,6 +404,7 @@ def get_fbank_data_time(dm, _time, width, beam):
     t_extract = 2*backstep + 2*width + t_smear
 
     if (sample-backstep+t_extract) > fil.header.nsamples:
+        #raise RuntimeError("Filterbank out-of-bound", "End window is out of bounds")
         print "Filterbank out-of-bound.", "End window is out of bounds", backstep, event_end
         backstep = int((fil.header.nsamples - sample)/tsamp_ms)
         event_end = int(backstep*2 + width)
@@ -447,9 +425,8 @@ def get_fbank_data_time(dm, _time, width, beam):
 
     time  = np.arange(event_end)*tsamp_ms
     series = disp_block.sum(axis=0)[:event_end]
-    series_0DM = block.sum(axis=0)[:event_end]
 
-    return block, disp_block[:,:event_end], conv_arr, time, series, series_0DM
+    return block, disp_block[:,:event_end], conv_arr, time, series
   else:
     print "No filterbank found"
     print fil_pattern
@@ -457,11 +434,11 @@ def get_fbank_data_time(dm, _time, width, beam):
 cands_plot.data_source.on_change('selected', tap_callback)
 candidate_table.source.on_change('selected', tap_callback_table)
 
-top_level_controls = [ obs_selector] #, subobs_selector, subsubobs_selector]
+top_level_controls = [ obs_selector]
 if subobservations_present:
   top_level_controls.append(subobs_selector)
   if subsubobservations_present:
-    top_level_control.append(subsubobs_selector)
+    top_level_controls.append(subsubobs_selector)
 obs_selector.on_change('value', lambda attr, old, new: update_obs())
 if subobservations_present:
   subobs_selector.on_change('value', lambda attr, old, new: update_subobs())
@@ -469,7 +446,7 @@ if subobservations_present:
     subsubobs_selector.on_change('value', lambda attr, old, new: update_cand_file())
 
 cand_controls = [cand_x_axis, cand_y_axis, cand_min_snr, cand_min_width,
-  cand_max_width, cand_min_DM, cand_max_DM, cand_min_beam, cand_max_beam]
+    cand_max_width, cand_min_DM, cand_max_DM, cand_min_beam, cand_max_beam]
 for control in cand_controls:
   control.on_change('value', lambda attr, old, new: update())
 
@@ -479,7 +456,7 @@ cand_control_inputs = widgetbox(*cand_controls, sizing_mode=sizing_mode)
 
 desc = Div()
 l = layout([[desc], [top_level_inputs], [cands_fig, cand_control_inputs],
-  [timeseries_fig], [table], [dedisp_fig, conv_fig]])
+    [timeseries_fig], [table], [dedisp_fig, conv_fig]])
 curdoc().add_root(l)
 curdoc().title = "Candidates"
 
