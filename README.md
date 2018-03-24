@@ -5,13 +5,11 @@ The given example reads fof'ed version, but the cfg file can be modified to use 
 
 ### Prerequisites
 
-```
 pandas
 bokeh 0.12.6
 [sigpyproc] (https://github.com/ewanbarr/sigpyproc)
 stsci.convolve
 ~~mbplotlib~~
-```
 
 ### Deploying
 
