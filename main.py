@@ -2,7 +2,8 @@
 import ConfigParser
 import os, glob
 import pandas as pd
-
+import scipy
+from stsci.convolve import boxcar
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, Div, HoverTool
 from bokeh.io import curdoc
@@ -15,7 +16,6 @@ filter_palette = Spectral10
 
 # for fbank handling
 import numpy as np
-import mbplotlib
 from sigpyproc.Readers import FilReader
 CAND_PLOT_CFG = os.environ['HOME']+"/.candplotter.cfg"
 
@@ -368,8 +368,10 @@ def get_fbank_data(dm, sample, width, beam):
     conv_arr = np.zeros((block.shape[0],event_end))
 
     for i in xrange(conv_arr.shape[0]):
-        conv_arr[i] = mbplotlib.wrapper_conv_boxcar(np.array(disp_block[i,:event_end],
-          dtype=np.ctypeslib.ct.c_long),width)
+#        conv_arr[i] = mbplotlib.wrapper_conv_boxcar(np.array(disp_block[i,:event_end],
+#          dtype=np.ctypeslib.ct.c_long),width)
+#        conv_arr[i]=boxcar(np.array(disp_block[i,:event_end]),width)i
+        conv_arr[i] = boxcar(np.array(disp_block[i,:event_end]),(np.log2(width),),mode="constant").astype(np.float32)
     conv_arr = conv_arr[:,:(-width-1)]
 
     time  = np.arange(event_end)*tsamp_ms
@@ -419,8 +421,9 @@ def get_fbank_data_time(dm, _time, width, beam):
     conv_arr = np.zeros((block.shape[0],event_end))
 
     for i in xrange(conv_arr.shape[0]):
-        conv_arr[i] = mbplotlib.wrapper_conv_boxcar(np.array(disp_block[i,:event_end],
-          dtype=np.ctypeslib.ct.c_long),width)
+#        conv_arr[i] = mbplotlib.wrapper_conv_boxcar(np.array(disp_block[i,:event_end],
+#          dtype=np.ctypeslib.ct.c_long),width)
+        conv_arr[i] = boxcar(np.array(disp_block[i,:event_end]),(width,),mode="constant",cval=np.median(np.array(disp_block[i,:event_end]))).astype(np.float32)
     conv_arr = conv_arr[:,:(-width-1)]
 
     time  = np.arange(event_end)*tsamp_ms
