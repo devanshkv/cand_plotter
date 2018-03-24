@@ -3,15 +3,15 @@
 This code can be used for plotting FRB candidates. This is the fredda verison.
 The given example reads fof'ed version, but the cfg file can be modified to use the fredda.cand file.
 
-### Prerequisites
+## Prerequisites
 
-pandas
-bokeh 0.12.6
-[sigpyproc] (https://github.com/ewanbarr/sigpyproc)
-stsci.convolve
-~~mbplotlib~~
+* pandas
+* bokeh 0.12.6
+* [sigpyproc] (https://github.com/ewanbarr/sigpyproc)
+* stsci.convolve
+* ~~mbplotlib~~
 
-### Deploying
+## Deploying
 
 Simply deploy on your system and create a ~/.candplotter.cfg file based on the included example and run a bokeh server.
 ```
