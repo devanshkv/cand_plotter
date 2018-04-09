@@ -2,6 +2,8 @@
 
 This code can be used for plotting FRB candidates. This is the fredda verison.
 The given example reads fof'ed version, but the cfg file can be modified to use the fredda.cand file.
+Frequeny info is hard coded for ASKAP data.
+This version doesn't have tables, for that refer to original Stefan Oslowski's version.
 
 ## Prerequisites
 
