@@ -8,11 +8,11 @@ from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, Div, HoverTool
 from bokeh.io import curdoc
 from bokeh.models.widgets import Select, Slider, DataTable, TableColumn
-from bokeh.layouts import layout, widgetbox
+from bokeh.layouts import layout, widgetbox, gridplot
 #choose palette for filter to color mapping. If more than 8 filter widths allowed, different palette will be needed
-from bokeh.palettes import Spectral10
+from bokeh.palettes import Spectral11
 
-filter_palette = Spectral10
+filter_palette = Spectral11
 
 # for fbank handling
 import numpy as np
@@ -104,6 +104,7 @@ def update_cand_file():
   print cand_file
   print "loading cands", cand_file
   _cands = pd.read_csv(cand_file, comment='#', delim_whitespace=True, names=config.get('cand', 'format').split(',')) #, #names=config.get('cand', 'format').split(",") )
+  _cands["primary_beam"] =_cands["beam"]
   _cands["max_snr"] =_cands["snr"]
   print _cands.keys()
   _cands["color"] = pd.Series("blue", _cands.index)
@@ -143,13 +144,13 @@ axis_map = {
 inverse_axis_map = {v: k for k, v in axis_map.iteritems()}
 
 cand_x_axis = Select(title="X Axis", options=sorted(axis_map.keys()),
-    value="Beam No.")
+    value="DM")
 cand_y_axis = Select(title="Y Axis", options=sorted(axis_map.keys()),
     value="Time (s)")
 
 cand_min_snr = Slider(title="Min S/N", value = 7.0, start=7.0, end=15.0, step=0.05)
 cand_min_width = Slider(title="Min log2(width)", value = 0, start=0, end=10, step=1)
-cand_max_width = Slider(title="Max log2(width)", value = 32, start=0, end=32, step=1)
+cand_max_width = Slider(title="Max log2(width)", value = 12, start=0, end=32, step=1)
 cand_min_DM = Slider(title="Min DM", value = 20., start=0., end=41160., step=1)
 cand_max_DM = Slider(title="Max DM", value = 41160., start=0., end=41160., step=1)
 cand_min_beam = Slider(title="Min beam no.", value = 0, start=0., end=36, step=1)
@@ -160,8 +161,9 @@ source = ColumnDataSource(data=dict(x=[], y=[], DM=[], snr=[], filter_width=[],
   sample=[], beam=[], color=[], alpha=[], time = []))
 
 source_ts = ColumnDataSource(data=dict(time=[], series=[]))
-source_fb = ColumnDataSource(data=dict(image=[]))
-source_fb_conv = ColumnDataSource(data=dict(image=[]))
+#source_fb = ColumnDataSource(data=dict(image=[]))
+#source_fb_conv = ColumnDataSource(data=dict(image=[]))
+common_source = ColumnDataSource(data=dict(fb_image=[], fb_conv_image=[]))
 
 source_for_table = ColumnDataSource(data=dict(time=[], snr=[], max_snr=[], beam=[],
   primary_beam=[], DM=[]))
@@ -174,8 +176,8 @@ columns = [
     TableColumn(field="primary_beam", title = inverse_axis_map["primary_beam"]),
     TableColumn(field="DM", title = inverse_axis_map["DM"])
 ]
-candidate_table = DataTable(source=source_for_table, columns=columns, width=800)
-table = widgetbox(candidate_table)
+#candidate_table = DataTable(source=source_for_table, columns=columns, width=800)
+#table = widgetbox(candidate_table)
 
 TOOLS = 'crosshair, box_zoom, reset, box_select, tap, hover'
 
@@ -193,16 +195,17 @@ timeseries_fig = figure(plot_height=300, plot_width=1400, title="Time Series",
     tools = 'box_zoom, reset', toolbar_location='right')
 timeseries_plot = timeseries_fig.line(x="time", y="series", source=source_ts, line_width=2)
 
+y_range=(1129,1465)
+print "I printed this", source_ts.data["time"]
 dedisp_fig = figure(plot_height=600, plot_width=700, title="Dedispersed data",
-    tools ='box_zoom, reset', x_range=(0, 10), y_range=(0, 10),
+    tools ='box_zoom, reset, box_select', x_range=timeseries_fig.x_range, y_range=y_range,
     toolbar_location='right' )
-dedisp_plot = dedisp_fig.image(image="image", x=0, y=0, dw=10, dh=10, source=source_fb, palette = 'Viridis256' )
+#dedisp_plot = dedisp_fig.image(image="fb_image", x=0, y=1129, dw=timeseries_fig.x_range.end , dh=336, source=common_source, palette = 'Viridis256' )
 
 conv_fig = figure(plot_height=600, plot_width=700, title="Convolved data",
-    tools ='box_zoom, reset', x_range=(0, 10), y_range=(0, 10),
+    tools ='box_zoom, reset, box_select', x_range=dedisp_fig.x_range, y_range=dedisp_fig.y_range,
     toolbar_location='right')
-conv_plot = conv_fig.image(image="image", x=0, y=0, dw=10, dh=10,
-    source=source_fb_conv, palette = 'Viridis256')
+#conv_plot = conv_fig.image(image="fb_conv_image", x=0, y=1129, dw=100, dh=336, source=common_source, palette = 'Viridis256')
 
 def select_cands():
   selected = cands[
@@ -250,17 +253,22 @@ def tap_callback(attr, old, new):
     time = selected_cand["time"].tolist()[0]
     filter_ind = selected_cand["logwidth"].tolist()[0]
     beam = selected_cand["beam"].tolist()[0]
+    print selected_cand["beam"]
     snr = selected_cand["snr"].tolist()[0]
     max_snr = selected_cand["max_snr"].tolist()[0]
     _, _dedisp_block, _conv_block, _time, _series = get_fbank_data_time(dm,
         time, 2**filter_ind, beam)
     source_ts.data["time"] = _time
     source_ts.data["series"] = _series
-    source_fb.data["image"] = [_dedisp_block]
-    source_fb_conv.data["image"] = [_conv_block]
+    #source_fb.data["image"] = [_dedisp_block]
+    #source_fb_conv.data["image"] = [_conv_block]
+    common_source.data["fb_image"] = [_dedisp_block]
+    common_source.data["fb_conv_image"] = [_conv_block]
+    dedisp_plot = dedisp_fig.image(image="fb_image", x=0, y=1129, dw=source_ts.data["time"][-1], dh=336, source=common_source, palette = 'Viridis256' )
+    conv_plot = conv_fig.image(image="fb_conv_image", x=0, y=1129, dw=source_ts.data["time"][-1], dh=336, source=common_source, palette = 'Viridis256')
 
     print "getting primary beam"
-    primary_beam = selected_cand["primary_beam"].tolist()[0]
+    primary_beam = selected_cand["beam"].tolist()[0]
     max_snr = selected_cand["max_snr"].tolist()[0]
 
     print "Selected candidate:"
@@ -282,40 +290,40 @@ def tap_callback(attr, old, new):
       snr = selected_cand["snr"],
       max_snr = selected_cand["max_snr"],
       beam = selected_cand["beam"],
-      primary_beam = selected_cand["primary_beam"],
+      primary_beam = selected_cand["beam"],
       DM = selected_cand["DM"],
       logwidth = selected_cand["logwidth"]
     )
 
-def tap_callback_table(attr, old, new):
-  # like tap_callback but don't update the table
-  if len(new['1d']['indices']) > 0:
-    cand_id = new['1d']['indices'][0]
-    print "tap_callback_table: cand_id", cand_id
-    dm = source_for_table.data["DM"][cand_id]
-    time = source_for_table.data["time"][cand_id]
-    filter_ind = source_for_table.data["logwidth"][cand_id]
-    beam = source_for_table.data["beam"][cand_id]
-    _, _dedisp_block, _conv_block, _time, _series = get_fbank_data_time(dm,
-        time, 2**filter_ind, beam)
-    source_ts.data["time"] = _time
-    source_ts.data["series"] = _series
-    source_fb.data["image"] = [_dedisp_block]
-    source_fb_conv.data["image"] = [_conv_block]
+#def tap_callback_table(attr, old, new):
+#  # like tap_callback but don't update the table
+#  if len(new['1d']['indices']) > 0:
+#    cand_id = new['1d']['indices'][0]
+#    print "tap_callback_table: cand_id", cand_id
+#    dm = source_for_table.data["DM"][cand_id]
+#    time = source_for_table.data["time"][cand_id]
+#    filter_ind = source_for_table.data["logwidth"][cand_id]
+#    beam = source_for_table.data["beam"][cand_id]
+#    _, _dedisp_block, _conv_block, _time, _series = get_fbank_data_time(dm,
+#        time, 2**filter_ind, beam)
+#    source_ts.data["time"] = _time
+#    source_ts.data["series"] = _series
+#    source_fb.data["image"] = [_dedisp_block]
+#    source_fb_conv.data["image"] = [_conv_block]
 
 
-def get_primary_and_rest_candidate(time, primary_beam, max_snr):
+def get_primary_and_rest_candidate(time, beam, max_snr):
   primary = cands[
     (cands.snr == max_snr) &
-    (cands.beam == primary_beam) &
-    (cands.primary_beam == primary_beam) &
+    (cands.beam == beam) &
+    (cands.primary_beam == beam) &
     (np.abs(cands.time - time) <0.1) # TODO time separation as a parameter
   ]
 
   rest = cands[
     (cands.max_snr == max_snr) &
     (cands.snr < max_snr) &
-    (cands.primary_beam == primary_beam) &
+    (cands.primary_beam == beam) &
     (np.abs(cands.time - time) < 0.1)
   ]
 
@@ -332,55 +340,55 @@ def get_primary_and_rest_candidate(time, primary_beam, max_snr):
 
 filterbank_prefix = config.get('cand_structure', 'filterbank_prefix')
 
-def get_fbank_data(dm, sample, width, beam):
-  # based on Wael's filplot
-  fil_pattern=(TOP_DIR+"/" + obs_selector.value+ filterbank_prefix + "/ics_beams"+"/%02d"%beam +".fil")
-  fil_fn = glob.glob(fil_pattern)
-  if len(fil_fn) > 0:
-    print fil_fn
-    fil = FilReader(fil_fn[0])
-
-    tsamp = fil.header.tsamp
-    tsamp_ms = fil.header.tsamp*1000.
-    backstep = int(200/tsamp_ms)
-    event_end = int(backstep*2 + width)
-
-    bw = fil.header.bandwidth
-
-    t_smear = np.ceil(((fil.header.bandwidth*8.3*dm)
-        / (fil.header.fcenter*10**(-3))**3)/(tsamp*1000000))
-    t_smear = int(1.05*t_smear)
-    t_extract = 2*backstep + 2*width + t_smear
-
-    if (sample-backstep+t_extract) > fil.header.nsamples:
-        #raise RuntimeError("Filterbank out-of-bound", "End window is out of bounds")
-        print "Filterbank out-of-bound.", "End window is out of bounds", backstep, event_end
-        backstep = int((fil.header.nsamples - sample)/tsamp_ms)
-        event_end = int(backstep*2 + width)
-        print "Adjusted backstep to", backstep, event_end
-
-    # original filterbank
-    block = fil.readBlock(sample-backstep, t_extract)
-    # dedisperse d filterbank:
-    disp_block = block.dedisperse(dm)
-
-    # dedispersed filterbank convolved at the expected width
-    conv_arr = np.zeros((block.shape[0],event_end))
-
-    for i in xrange(conv_arr.shape[0]):
-#        conv_arr[i] = mbplotlib.wrapper_conv_boxcar(np.array(disp_block[i,:event_end],
-#          dtype=np.ctypeslib.ct.c_long),width)
-#        conv_arr[i]=boxcar(np.array(disp_block[i,:event_end]),width)i
-        conv_arr[i] = boxcar(np.array(disp_block[i,:event_end]),(np.log2(width),),mode="constant").astype(np.float32)
-    conv_arr = conv_arr[:,:(-width-1)]
-
-    time  = np.arange(event_end)*tsamp_ms
-    series = disp_block.sum(axis=0)[:event_end]
-
-    return block, disp_block[:,:event_end], conv_arr, time, series
-  else:
-    print "No filterbank found"
-    print fil_pattern
+#def get_fbank_data(dm, sample, width, beam):
+#  # based on Wael's filplot
+#  fil_pattern=(TOP_DIR+"/" + obs_selector.value+ filterbank_prefix + "/ics_beams"+"/%02d"%beam +".fil")
+#  fil_fn = glob.glob(fil_pattern)
+#  if len(fil_fn) > 0:
+#    print fil_fn
+#    fil = FilReader(fil_fn[0])
+#
+#    tsamp = fil.header.tsamp
+#    tsamp_ms = fil.header.tsamp*1000.
+#    backstep = int(200/tsamp_ms)
+#    event_end = int(backstep*2 + width)
+#
+#    bw = fil.header.bandwidth
+#
+#    t_smear = np.ceil(((fil.header.bandwidth*8.3*dm)
+#        / (fil.header.fcenter*10**(-3))**3)/(tsamp*1000000))
+#    t_smear = int(1.05*t_smear)
+#    t_extract = 2*backstep + 2*width + t_smear
+#
+#    if (sample-backstep+t_extract) > fil.header.nsamples:
+#        #raise RuntimeError("Filterbank out-of-bound", "End window is out of bounds")
+#        print "Filterbank out-of-bound.", "End window is out of bounds", backstep, event_end
+#        backstep = int((fil.header.nsamples - sample)/tsamp_ms)
+#        event_end = int(backstep*2 + width)
+#        print "Adjusted backstep to", backstep, event_end
+#
+#    # original filterbank
+#    block = fil.readBlock(sample-backstep, t_extract)
+#    # dedisperse d filterbank:
+#    disp_block = block.dedisperse(dm)
+#
+#    # dedispersed filterbank convolved at the expected width
+#    conv_arr = np.zeros((block.shape[0],event_end))
+#    print "box_car_width: ", np.log2(width)
+#    for i in xrange(conv_arr.shape[0]):
+##        conv_arr[i] = mbplotlib.wrapper_conv_boxcar(np.array(disp_block[i,:event_end],
+##          dtype=np.ctypeslib.ct.c_long),width)
+##        conv_arr[i]=boxcar(np.array(disp_block[i,:event_end]),width)i
+#        conv_arr[i] = boxcar(np.array(disp_block[i,:event_end]),(np.log2(width),),mode="constant").astype(np.float32)
+#    conv_arr = conv_arr[:,:(-width-1)]
+#    
+#    time  = np.arange(event_end)*tsamp_ms
+#    series = disp_block.sum(axis=0)[:event_end]
+#
+#    return block, disp_block[:,:event_end], conv_arr, time, series
+#  else:
+#    print "No filterbank found"
+#    print fil_pattern
 
 def get_fbank_data_time(dm, _time, width, beam):
   print "get_fbank_data_time: running"
@@ -403,7 +411,8 @@ def get_fbank_data_time(dm, _time, width, beam):
     t_smear = np.ceil(((fil.header.bandwidth*8.3*dm)
         / (fil.header.fcenter*10**(-3))**3)/(tsamp*1000000))
     t_smear = int(1.05*t_smear)
-    t_extract = 2*backstep + 2*width + t_smear
+    #t_extract = 2*backstep + 2*width + t_smear
+    t_extract = 2*backstep + t_smear + 2*width
 
     if (sample-backstep+t_extract) > fil.header.nsamples:
         #raise RuntimeError("Filterbank out-of-bound", "End window is out of bounds")
@@ -424,6 +433,7 @@ def get_fbank_data_time(dm, _time, width, beam):
 #        conv_arr[i] = mbplotlib.wrapper_conv_boxcar(np.array(disp_block[i,:event_end],
 #          dtype=np.ctypeslib.ct.c_long),width)
         conv_arr[i] = boxcar(np.array(disp_block[i,:event_end]),(width,),mode="constant",cval=np.median(np.array(disp_block[i,:event_end]))).astype(np.float32)
+    
     conv_arr = conv_arr[:,:(-width-1)]
 
     time  = np.arange(event_end)*tsamp_ms
@@ -435,7 +445,7 @@ def get_fbank_data_time(dm, _time, width, beam):
     print fil_pattern
 
 cands_plot.data_source.on_change('selected', tap_callback)
-candidate_table.source.on_change('selected', tap_callback_table)
+#candidate_table.source.on_change('selected', tap_callback_table)
 
 top_level_controls = [ obs_selector]
 if subobservations_present:
@@ -459,7 +469,7 @@ cand_control_inputs = widgetbox(*cand_controls, sizing_mode=sizing_mode)
 
 desc = Div()
 l = layout([[desc], [top_level_inputs], [cands_fig, cand_control_inputs],
-    [timeseries_fig], [table], [dedisp_fig, conv_fig]])
+    [timeseries_fig], [dedisp_fig, conv_fig]])
 curdoc().add_root(l)
 curdoc().title = "Candidates"
 
