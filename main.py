@@ -196,7 +196,6 @@ timeseries_fig = figure(plot_height=300, plot_width=1400, title="Time Series",
 timeseries_plot = timeseries_fig.line(x="time", y="series", source=source_ts, line_width=2)
 
 y_range=(1129,1465)
-print "I printed this", source_ts.data["time"]
 dedisp_fig = figure(plot_height=600, plot_width=700, title="Dedispersed data",
     tools ='box_zoom, reset, box_select', x_range=timeseries_fig.x_range, y_range=y_range,
     toolbar_location='right' )
@@ -257,7 +256,9 @@ def tap_callback(attr, old, new):
     snr = selected_cand["snr"].tolist()[0]
     max_snr = selected_cand["max_snr"].tolist()[0]
     _, _dedisp_block, _conv_block, _time, _series = get_fbank_data_time(dm,
-        time, 2**filter_ind, beam)
+        time, filter_ind, beam)
+    # this is where fredda and heimdall differs
+    # heimdall gives 2**logwitdth, fredda gives real width
     source_ts.data["time"] = _time
     source_ts.data["series"] = _series
     #source_fb.data["image"] = [_dedisp_block]
